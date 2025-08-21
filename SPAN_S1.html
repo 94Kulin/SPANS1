@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Span/RBW/VBW + Mask Lookup (ETSI / FCC)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  /* ---------- THEME TOKENS ---------- */
+  :root{
+    /* Light defaults */
+    --bg:#f3f6fb; --card:#ffffff; --ink:#2b2f36; --muted:#6a778f; --accent:#2f7ed8; --accent-ink:#ffffff;
+    --headline:#1f4f82; --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --sans: "Segoe UI", Tahoma, Arial, system-ui, -apple-system, Roboto, "Noto Sans", "Helvetica Neue", sans-serif;
+    --border:#d6deea; --panel:#f9fbff; --line:#e7eef8; --shadow: 0 1px 0 rgba(16,36,94,.06), 0 8px 24px rgba(16,36,94,.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1420; --card:#141b2b; --ink:#e7efff; --muted:#9bb1d1; --accent:#5aa1ff; --accent-ink:#0a1222;
+    --headline:#a7c6ff; --border:#253250; --panel:#0f1a2c; --line:#223150; --shadow: 0 1px 0 rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1420; --card:#141b2b; --ink:#e7efff; --muted:#9bb1d1; --accent:#5aa1ff; --accent-ink:#0a1222;
+      --headline:#a7c6ff; --border:#253250; --panel:#0f1a2c; --line:#223150; --shadow: 0 1px 0 rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  /* ---------- BASE LAYOUT ---------- */
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.45}
+  header{padding:18px 16px 10px;max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:flex-end;justify-content:space-between}
+  header .titles{flex:1 1 auto}
+  header h1{margin:0;font-size:clamp(18px,3vw,26px);font-weight:700;color:var(--headline)}
+  header p{margin:.35rem 0 0;color:var(--muted)}
+  .wrap{max-width:1100px;margin:14px auto 40px;padding:0 16px;display:grid;gap:14px;grid-template-columns:1fr}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+  .card h2{font-size:15px;margin:0;padding:12px 14px;border-bottom:1px solid var(--border);color:var(--headline);font-weight:700;background:linear-gradient(180deg,#fafdff,#f3f8ff)}
+  :root[data-theme="dark"] .card h2{background:linear-gradient(180deg,#182449,#141b2b)}
+  .pad{padding:12px 14px}
+  .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:start}
+  .f{grid-column:span 4}
+  .f label{display:block;font-size:12px;color:#4b5c7a;margin:2px 0 6px;font-weight:600}
+  :root[data-theme="dark"] .f label{color:#a9b8d6}
+  .f input,.f select{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:14px;outline:0}
+  .f input:focus,.f select:focus{border-color:#b5c9ea;box-shadow:0 0 0 3px rgba(47,126,216,.12)}
+  :root[data-theme="dark"] .f input:focus,:root[data-theme="dark"] .f select:focus{border-color:#3c5ea0;box-shadow:0 0 0 3px rgba(90,161,255,.14)}
+  .radios{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .radios label{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);padding:7px 9px;border-radius:8px;cursor:pointer}
+  .hint{font-size:11px;color:#7b8aa6;margin-top:4px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  button{background:var(--accent);color:var(--accent-ink);border:none;padding:9px 12px;font-weight:700;border-radius:8px;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+  button:hover{filter:brightness(1.03)}
+  button.secondary{background:#eef3fb;color:#214a7a;border:1px solid #c7d6ee}
+  :root[data-theme="dark"] button.secondary{background:#213063;color:#cfe0ff;border:1px solid #31407b}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .kv{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+  .kv h3{margin:0 0 2px;font-size:12px;color:#4b5c7a;font-weight:600}
+  :root[data-theme="dark"] .kv h3{color:#a9b8d6}
+  .kv .val{font-family:var(--mono);font-size:18px;color:#1a2437}
+  :root[data-theme="dark"] .kv .val{color:#e7efff}
+  .seg{border-top:1px dashed var(--line);margin:10px 0 0;padding-top:10px}
+  details.calc{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  details.calc summary{cursor:pointer;color:#214a7a;font-weight:600}
+  :root[data-theme="dark"] details.calc summary{color:#cfe0ff}
+  .mono{font-family:var(--mono);white-space:pre-wrap}
+  .small{font-size:12px;color:#44587b}
+  :root[data-theme="dark"] .small{color:#a2b3ff}
+  .filebox{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .filebox input[type="file"]{display:none}
+  .filebox label{background:#eef3fb;border:1px solid #c7d6ee;color:#214a7a;padding:8px 12px;border-radius:8px;cursor:pointer}
+  :root[data-theme="dark"] .filebox label{background:#213063;border:1px solid #31407b;color:#cfe0ff}
+  .muted{color:#6a778f}
+  :root[data-theme="dark"] .muted{color:#95a8ff}
+  .maskname{font-weight:800;color:#1f4f82}
+  :root[data-theme="dark"] .maskname{color:#bfe3ff}
+  .diag{margin-top:8px;font-size:12px;color:#1f4f82;background:#f2f7ff;border:1px solid #cfe1ff;border-radius:8px;padding:8px}
+  :root[data-theme="dark"] .diag{color:#cfe0ff;background:#0f1a2c;border:1px solid #223150}
+  textarea{width:100%;height:220px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:#1a2437;padding:10px;font-family:var(--mono)}
+  :root[data-theme="dark"] textarea{color:#e7efff}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+
+  /* Modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);backdrop-filter:blur(1px);display:none}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px}
+  .modal .sheet{max-width:960px;width:100%;max-height:85vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+  .modal header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#fafdff,#f3f8ff)}
+  :root[data-theme="dark"] .modal header{background:linear-gradient(180deg,#182449,#141b2b)}
+  .modal header h3{margin:0;font-size:16px;color:var(--headline)}
+  .modal .body{padding:12px 16px}
+  .close{background:#eef3fb;border:1px solid #c7d6ee;color:#214a7a;border-radius:8px;padding:6px 10px;cursor:pointer}
+  :root[data-theme="dark"] .close{background:#213063;border:1px solid #31407b;color:#cfe0ff}
+
+  .pill{display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;font-size:11px;color:#4b5c7a;margin:4px 0 8px}
+  :root[data-theme="dark"] .pill{color:#bcd0ff;border-color:#31407b}
+  .list-tight li{margin:6px 0}
+  .mono-clip{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<header>
+  <div class="titles">
+    <h1>Span / RBW / VBW + Mask Lookup</h1>
+    <p>ETSI EN 302 217-2 V3.4.1 / FCC §101.111 — built‑in <strong>maskCfg.txt</strong> (override via upload)</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <h2>Inputs</h2>
+    <div class="pad">
+      <div class="row">
+        <div class="f" style="grid-column:span 3">
+          <label for="cf">Center frequency (MHz)</label>
+          <input id="cf" type="number" step="0.01" placeholder="e.g. 11562.5" />
+        </div>
+        <div class="f" style="grid-column:span 3">
+          <label for="bw">Channel bandwidth (MHz)</label>
+          <!-- BW is a dropdown with presets; value encodes {"bw":<MHz>,"std":"ETSI|FCC"} -->
+          <select id="bw">
+            <option value="">— choose —</option>
+          </select>
+          <div class="hint">Converted to kHz for mask lookup</div>
+        </div>
+        <div class="f" style="grid-column:span 3">
+          <label for="mod">Modulation</label>
+          <select id="mod">
+            <option>4QAM</option><option>8QAM</option><option>16QAM</option><option>32QAM</option>
+            <option>64QAM</option><option>128QAM</option><option>256QAM</option><option>512QAM</option>
+            <option>1024QAM</option><option>2048QAM</option><option>4096QAM</option>
+          </select>
+          <div class="hint">Used for mask lookup</div>
+        </div>
+        <div class="f" style="grid-column:span 3">
+          <label>Standard</label>
+          <div class="radios">
+            <label><input type="radio" name="std" value="ETSI" checked /> ETSI</label>
+            <label><input type="radio" name="std" value="FCC" /> FCC</label>
+          </div>
+          <div class="hint">Auto-set by BW selection; you can override.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="calc">Calculate</button>
+        <button class="secondary" id="reset">Reset</button>
+        <button class="secondary" id="infoBtn" title="Open measurement cheat-sheet">Info</button>
+        <label class="radios" style="margin-left:auto">
+          <input type="checkbox" id="fallback" />
+          <span>Allow fallback (same EF+BW, ignore modulation)</span>
+        </label>
+      </div>
+
+      <div class="seg filebox" id="drop">
+        <input id="file" type="file" accept=".txt,.md,.text" />
+        <label for="file">Upload maskCfg file here</label>
+        <span id="fileStatus" class="muted">No file loaded</span><span class="muted" style="margin-left:auto">name of the file must be <b>maskCfg.txt</b></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Results</h2>
+    <div class="pad">
+      <div class="cols">
+        <div>
+          <h3 style="margin:0 0 8px;color:var(--headline)">Calculated (from rules)</h3>
+          <div class="kv"><h3>SPAN</h3><div class="val" id="calcSpan">—</div></div>
+          <div class="kv"><h3>RBW</h3><div class="val" id="calcRBW">—</div></div>
+          <div class="kv"><h3>VBW</h3><div class="val" id="calcVBW">—</div></div>
+          <details class="calc" open>
+            <summary>Show calculation</summary>
+            <div id="calcExplainer" class="mono small"></div>
+          </details>
+        </div>
+        <div>
+          <h3 style="margin:0 0 8px;color:var(--headline)">From maskCfg file</h3>
+          <div class="kv"><h3>Mask SPAN</h3><div class="val" id="maskSpan">—</div></div>
+          <div class="kv"><h3>Mask RBW</h3><div class="val" id="maskRBW">—</div></div>
+          <div class="kv"><h3>Mask VBW</h3><div class="val" id="maskVBW">—</div></div>
+          <div class="seg small">Mask name: <span id="maskName" class="maskname">—</span></div>
+          <div class="diag" id="diag" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Mask file preview</h2>
+    <div class="pad">
+      <textarea id="filePreview" placeholder="Mask file contents will appear here after loading..."></textarea>
+    </div>
+  </section>
+</div>
+
+<!-- Info Modal -->
+<div class="modal-backdrop" id="infoBackdrop"></div>
+<div class="modal" id="infoModal" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <header>
+      <h3 id="infoTitle">Measurement Principles, Formulas & References</h3>
+      <button class="close" id="infoClose" type="button">Close</button>
+    </header>
+    <div class="body small">
+      <div class="pill">What you’re measuring</div>
+      <ul class="list-tight">
+        <li><b>Emission mask</b> (near in-band & OOB): the modulated spectrum must sit under a mask defined by the standard, for adjacent-channel protection.</li>
+        <li><b>Spurious emissions</b> (far-out): unintended emissions outside the mask domain; checked against absolute limits / attenuation rules.</li>
+      </ul>
+
+      <div class="pill">Rules & formulas</div>
+      <h4>ETSI EN 302 217-2 V3.4.1 — Mask measurement settings</h4>
+      <ul class="list-tight">
+        <li><b>Span (sweep width):</b> if <span class="mono-clip">CS &lt; 500 MHz</span> ⇒ <span class="mono-clip">SPAN ≥ 5×CS</span>; if <span class="mono-clip">CS ≥ 500 MHz</span> ⇒ <span class="mono-clip">SPAN ≥ 3×CS + 1000 MHz</span>. (Table 7, § 5.2.3) </li>
+        <li><b>RBW (IF bandwidth):</b> use the RBW step for your CS from <b>Table 7</b> (typical steps 1/3/10/30/100/300 kHz, then 2 MHz/5 MHz at very large CS). (Table 7, § 5.2.3)</li>
+        <li><b>VBW:</b> per <b>Table 7</b>, paired with RBW (e.g., 0.003/0.01/0.03/0.1/0.3 kHz … then 3/5 kHz for large CS). (Table 7, § 5.2.3)</li>
+        <li><b>Mask extent:</b> masks extend to <span class="mono-clip">2.5×CS</span> (or <span class="mono-clip">1.5×CS + 500 MHz</span> when emission bandwidths exceed 500 MHz). (§ 4.2.3 & figs 3–6)</li>
+        <li><b>Discrete CW lines over mask:</b> aggregation allowance based on IF bandwidth and <span class="mono-clip">CS<sub>min</sub></span> (formulas (1) & (2)). (§ 4.2.4.2)</li>
+      </ul>
+
+      <h4>FCC 47 CFR § 101.111 — Emission limitations (digital)</h4>
+      <ul class="list-tight">
+        <li><b>Mask region (50–250% offset):</b> evaluate attenuation in the stated reference bandwidth: <b>below 15 GHz</b> “in any <span class="mono-clip">4 kHz</span> band”; <b>above 15 GHz</b> “in any <span class="mono-clip">1 MHz</span> band.” (§ 101.111(a)(2)(i–ii))</li>
+        <li><b>Far-out (&gt;250% offset):</b> at least <span class="mono-clip">43 + 10·log10(P[W]) dB</span> (or 80 dB, whichever is less); minimum absolute floor −13 dBm/1 MHz appears in notes to (i–ii). (§ 101.111(a)(2)(iii))</li>
+        <li><b>Span:</b> not prescribed by FCC; common practice is <span class="mono-clip">SPAN ≈ 5×B</span> for OOB visualization; document chosen span.</li>
+        <li><b>RBW quick rule (spurious scans):</b> based on <b>center frequency f<sub>c</sub></b>: if <span class="mono-clip">f<sub>c</sub> ≤ 1 GHz</span> use <span class="mono-clip">100 kHz</span>; if <span class="mono-clip">f<sub>c</sub> &gt; 1 GHz</span> use <span class="mono-clip">1 MHz</span>. (industry practice consistent with § 101.111 ref-BWs)</li>
+      </ul>
+
+      <div class="pill">What changes when you change a setting</div>
+      <h4>RBW (IF bandwidth)</h4>
+      <ul class="list-tight">
+        <li><b>Noise floor:</b> approximately <span class="mono-clip">−174 dBm/Hz + 10·log10(RBW) + NF</span>. Narrow RBW lowers displayed noise (better dynamic range), wider RBW raises noise (faster sweep).</li>
+        <li><b>Too wide</b> hides narrow lines and over-integrates noise; <b>too narrow</b> makes the trace noisy/slow and may miss short peaks.</li>
+        <li><b>Compliance:</b> for ETSI masks use <b>Table 7</b> RBW (that’s what the mask assumes). For FCC equations, respect the stated reference bandwidth (4 kHz or 1 MHz). </li>
+      </ul>
+
+      <h4>VBW (video bandwidth)</h4>
+      <ul class="list-tight">
+        <li><b>Trace stability:</b> VBW is a post-detector low-pass. <b>VBW ≪ RBW</b> smooths noise-like shoulders (stable average). <b>VBW = RBW</b> shows true peaks (more flicker).</li>
+        <li>If you measure noise-like shoulders with a wide VBW or peak detector, the trace flickers and shows occasional spikes that are not representative of average power.</li>
+        <li><b>ETSI:</b> follow <b>Table 7</b> pairings. <b>FCC:</b> for peak compliance readings, <b>VBW = RBW</b> is typical; if you use averaging for diagnostics, note VBW explicitly.</li>
+      </ul>
+
+      <h4>Span (sweep width)</h4>
+      <ul class="list-tight">
+        <li><b>Too small</b> → you won’t see the full mask extent / spurious boundary; <b>too large</b> → long sweep, risk of missing peaks unless RBW is adjusted.</li>
+        <li><b>ETSI:</b> <span class="mono-clip">SPAN ≥ 5×CS</span> (<span class="mono-clip">CS&lt;500</span>) or <span class="mono-clip">≥ 3×CS + 1000 MHz</span> (<span class="mono-clip">CS≥500</span>); high-band tests may be segmented. (Table 7)</li>
+        <li><b>FCC:</b> choose span to cover 50–250% offsets (mask region) and >250% (far-out); common practice <span class="mono-clip">≈ 5×B</span>; document your choice.</li>
+      </ul>
+
+      <h4>Detector & trace</h4>
+      <ul class="list-tight">
+        <li><b>Peak + Max Hold:</b> captures worst-case spikes; essential mindset for emission masks.</li>
+        <li><b>RMS/Average:</b> shows average of noise-like shoulders; pair with <b>VBW ≪ RBW</b> to stabilize; if you report averages, document the detector/VBW.</li>
+        <li><b>Sample:</b> fastest but can under-read peaks on noise-like spectra.</li>
+      </ul>
+
+      <h4>Reference level, attenuation, preamp</h4>
+      <ul class="list-tight">
+        <li><b>Reference Level:</b> set to approx. the TX power at the analyzer input (after external attenuation) so the front-end stays linear.</li>
+        <li><b>Reference Level Offset:</b> add cables/attenuator/notch loss as a positive offset so on-screen levels equal at-port levels.</li>
+        <li><b>Input Attenuation:</b> increase until changing attenuation does <i>not</i> change measured spur levels → confirms no overload.</li>
+        <li><b>Preamplifier:</b> use only when the carrier is removed/notched and you are noise-limited; preamps can overload on strong carriers and create false spurs.</li>
+      </ul>
+
+      <h4>Averaging & sweep time</h4>
+      <ul class="list-tight">
+        <li><b>Trace averaging</b> (VBW or sweep averaging) reduces variance on noise-like spectra, improving repeatability but possibly hiding short peaks.</li>
+        <li><b>Sweep time:</b> with narrow RBW or large spans, use auto or longer sweeps to ensure peak capture.</li>
+      </ul>
+
+      <h4>Normalization & bandwidth units</h4>
+      <ul class="list-tight">
+        <li>Check whether limits are <b>dBm</b>, <b>dBm/MHz</b>, or <b>dBc</b>. If your measurement RBW ≠ 1 MHz, normalize power by <span class="mono-clip">10·log10(1 MHz/RBW)</span> to compare to per-MHz limits.</li>
+        <li><b>ETSI masks</b> are spectral density masks linked to CS; <b>FCC equations</b> define attenuation vs percent offset and specify the reference bandwidth directly.</li>
+      </ul>
+
+      <div class="pill">Where to look (standard sections)</div>
+      <ul class="list-tight">
+        <li><b>ETSI EN 302 217-2 V3.4.1:</b> Spectrum analyzer settings (Span/RBW/VBW): <b>§ 5.2.3, Table 7</b>; Mask shapes & extent 2.5×CS: <b>§ 4.2.3 & figs 3–6</b>; Discrete CW aggregation: <b>§ 4.2.4.2</b>; Spurious domain reference: <b>§ 4.2.5</b>.</li>
+        <li><b>FCC § 101.111:</b> Digital mask equations + reference bandwidths (4 kHz & 1 MHz): <b>§ 101.111(a)(2)(i–ii)</b>; Far-out rule (&gt;250%): <b>§ 101.111(a)(2)(iii)</b>.</li>
+      </ul>
+
+      <div class="pill">Practical quick-start</div>
+      <ol class="list-tight">
+        <li>Protect analyzer (fixed pad), set <b>RefLvl</b> ≈ TX at input; set <b>RefLvl Offset</b> to external loss.</li>
+        <li>Select Standard & CS/BW.</li>
+        <li><b>ETSI mask:</b> set Span/RBW/VBW from Table 7; <b>Peak + Max Hold</b>; check K/f mask points.</li>
+        <li><b>FCC mask:</b> use § 101.111 equations; below 15 GHz measure “in any <b>4 kHz</b> band”, above 15 GHz “in any <b>1 MHz</b> band.”</li>
+        <li><b>Spurious scan:</b> extend to spurious domain; RBW per reference bandwidth; maintain enough attenuation to avoid overload; normalize if limits are per-MHz.</li>
+        <li>If noise-like shoulders flicker, reduce <b>VBW</b> (≤ ~0.3×RBW) or use RMS detector for diagnostics; report peak where required.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ----------- Helpers & formatters ----------- */
+const $ = s=>document.querySelector(s);
+const fmt = {
+  mhz:v=> (v==null? "—" : `${(+v).toLocaleString(undefined,{maximumFractionDigits:3,useGrouping:false})} MHz`),
+  khz:v=> (v==null? "—" : `${(+v).toLocaleString(undefined,{maximumFractionDigits:3,useGrouping:false})} kHz`),
+  hz:v => (v==null? "—" : `${(+v).toLocaleString(undefined,{maximumFractionDigits:0,useGrouping:false})} Hz`),
+};
+function nearestChoice(target, choices){
+  let best = choices[0], err = Math.abs(target-choices[0]);
+  for(const c of choices){ const e = Math.abs(target-c); if(e<err){err=e; best=c;} }
+  return best;
+}
+function f3(n){ return (+n).toFixed(3).replace(/\.?0+$/,''); }   // up to 3 decimals, no trailing zeros
+function f0(n){ return Math.round(+n).toString(); }
+
+/* ----------- Standards logic (per research) ----------- */
+/* ETSI EN 302 217-2 V3.4.1 (Table 7 + method):
+   - Span:  if B < 500 MHz → 5×B; else → 3×B + 1000 MHz
+   - RBW:   ≈ 1% of B, snapped to analyzer steps {1,3,10,30,100,300,1000,2000,5000} kHz
+            (Use maskCfg when available for exact per-CS rows.)
+   - VBW:   ≈ 0.3% of RBW (minimum 100 Hz)
+*/
+function calcSpan_ETSI(bw_mhz){ return (bw_mhz < 500) ? 5*bw_mhz : 3*bw_mhz + 1000; } // MHz
+function etsi_RBWkHz_from_B(bw_mhz){
+  const rbwChoices_kHz = [1,3,10,30,100,300,1000,2000,5000];
+  const target_kHz = Math.max(1, 0.01 * bw_mhz * 1000); // 1% of B in kHz
+  return nearestChoice(target_kHz, rbwChoices_kHz);
+}
+function etsi_VBWhz_from_RBWkHz(rbw_kHz){
+  return Math.max(100, Math.round(rbw_kHz*1000*0.003)); // 0.3% of RBW (Hz), ≥100 Hz
+}
+
+/* FCC §101.111 (mask equations + practice):
+   - Span:  practice → 5×B (engineering, not mandated)
+   - RBW:   center frequency rule-of-thumb for spurious scans
+              f_c ≤ 1 GHz → 100 kHz; f_c > 1 GHz → 1 MHz
+   - VBW:   = RBW (peak compliance sweeps)
+*/
+function calcFCC_Span(bw_mhz){ return 5*bw_mhz; } // MHz
+function calcFCC_RBW_kHz(cf_mhz){ return (cf_mhz <= 1000) ? 100 : 1000; } // kHz
+function calcFCC_VBW_Hz(rbw_kHz){ return Math.round(rbw_kHz * 1000); } // Hz
+
+/* ----------- RF sections (for maskCfg lookup) ----------- */
+function rfSectionForCF_kHz(cf_khz){
+  const secs = [
+    {t:"#RF=1-3000000 kHz",          min:1,        max:3000000},
+    {t:"#RF=3000000-10000000 kHz",   min:3000000,  max:10000000},
+    {t:"#RF=10000000-15000000 kHz",  min:10000000, max:15000000},
+    {t:"#RF=15000000-17000000 kHz",  min:15000000, max:17000000},
+    {t:"#RF=17000000-30000000 kHz",  min:17000000, max:30000000},
+    {t:"#RF=30000000-55000000 kHz",  min:30000000, max:55000000},
+  ];
+  return secs.find(s => cf_khz>=s.min && cf_khz<=s.max);
+}
+function parseMaskSection(text, title){
+  const i = text.indexOf(title);
+  if (i<0) return "";
+  const j = text.indexOf("#RF=", i+title.length);
+  return text.slice(i, j>0? j : undefined);
+}
+
+/* ----------- Parser for maskCfg lines ----------- */
+/* Format:
+   E|F : <bandwidth_kHz>_<mod>_<bandwidth_MHzTag> : SPAN=...;RBW=...;VBW=... : <maskName>
+*/
+function findMaskEntry(sectionText, std, bw_khz, modulation, allowFallback){
+  const lines = sectionText.split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith("#"));
+  const rx = /^([EF])\s*:\s*([0-9]+)_([A-Za-z0-9]+)_[^:]+:\s*SPAN\s*=\s*([0-9]+)\s*;\s*RBW\s*=\s*([0-9]+)\s*;\s*VBW\s*=\s*([0-9]+)\s*:\s*(\S.*?)\s*$/i;
+  const wantEF = (std==='ETSI'?'E':'F');
+  const wantMod = String(modulation||"").toUpperCase();
+  const wantBW  = Number(Math.round(bw_khz)); // integer kHz
+  let exact=null, bwOnly=null;
+  for(const l of lines){
+    const m = l.match(rx);
+    if(!m) continue;
+    const [_, EF, bwToken, modToken, span, rbw, vbw, maskName] = m;
+    const okEF = (EF.toUpperCase()===wantEF);
+    const okBW = (+bwToken===wantBW);
+    const okMod= (String(modToken).toUpperCase()===wantMod);
+    if (okEF && okBW && okMod) { exact = {span:+span, rbw:+rbw, vbw:+vbw, name:maskName, line:l}; break; }
+    if (okEF && okBW && !bwOnly) bwOnly = {span:+span, rbw:+rbw, vbw:+vbw, name:maskName, line:l};
+  }
+  if (exact) return {match:exact, note:""};
+  if (allowFallback && bwOnly) return {match:bwOnly, note:"Exact match not found — using same EF+BW (ignoring modulation)."};
+  return {match:null, note:""};
+}
+
+/* ========== Presets embedded into the BW dropdown (2.5 FCC, 3.5 ETSI) ========== */
+const INTEGRA_PRESET_STD  = {
+  ETSI: [3.5, 5, 7, 14, 20, 28, 40, 56, 60, 112],
+  FCC:  [2.5, 10, 20, 25, 30, 40, 50, 60, 75, 80, 100]
+};
+function populateBWDropdown(){
+  const sel = $("#bw"); if(!sel) return;
+  sel.querySelectorAll("option:not(:first-child)").forEach(o=>o.remove());
+  const items = [];
+  for(const n of INTEGRA_PRESET_STD.ETSI){ items.push({bw:n, std:"ETSI"}); }
+  for(const n of INTEGRA_PRESET_STD.FCC){  items.push({bw:n, std:"FCC"}); }
+  items.sort((a,b)=> (a.bw - b.bw) || a.std.localeCompare(b.std));
+  for(const it of items){
+    const opt = document.createElement("option");
+    opt.value = JSON.stringify({bw:it.bw, std:it.std});
+    opt.textContent = `${it.bw} MHz ${it.std}`;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener("change", ()=>{
+    if(!sel.value) return;
+    const {std} = JSON.parse(sel.value);
+    const radio = document.querySelector(`input[name="std"][value="${std}"]`);
+    if (radio) radio.checked = true;
+  });
+}
+
+/* ----------- UI wiring ----------- */
+function setDiag(msg){ const d=$("#diag"); d.style.display=msg? "block":"none"; d.textContent=msg||""; }
+let maskText = `#RF=1-3000000 kHz
+#
+#
+E : 250_4QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B2250KB
+E : 250_8QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B3250KB
+E : 250_16QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B4250KB
+E : 250_32QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B4250KB
+E : 250_64QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B4250KB
+E : 250_128QAM_0p25_MHz : SPAN=1300;RBW=3;VBW=10 : B4250KB
+#
+E : 500_4QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B2500KB
+E : 500_8QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B3500KB
+E : 500_16QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B4500KB
+E : 500_32QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B4500KB
+E : 500_64QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B4500KB
+E : 500_128QAM_0p5_MHz : SPAN=2600;RBW=10;VBW=30 : B4500KB
+#
+E : 750_4QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B2750KB
+E : 750_8QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B3750KB
+E : 750_16QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B4750KB
+E : 750_32QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B4750KB
+E : 750_64QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B4750KB
+E : 750_128QAM_0p75_MHz : SPAN=4250;RBW=10;VBW=30 : B4750KB
+#
+E : 1000_4QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B21M00B
+E : 1000_8QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B31M00B
+E : 1000_16QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B41M00B
+E : 1000_32QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B41M00B
+E : 1000_64QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B41M00B
+E : 1000_128QAM_1_MHz : SPAN=5400;RBW=30;VBW=100 : B41M00B
+#
+E : 1250_4QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B21M25B
+E : 1250_8QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B31M25B
+E : 1250_16QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B41M25B
+E : 1250_32QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B41M25B
+E : 1250_64QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B41M25B
+E : 1250_128QAM_1p25_MHz : SPAN=6750;RBW=30;VBW=100 : B41M25B
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B21M75B
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B31M75B
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B41M75B
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B41M75B
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B41M75B
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : B41M75B
+#
+E : 2000_4QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B22M00B
+E : 2000_8QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B32M00B
+E : 2000_16QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B42M00B
+E : 2000_32QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B42M00B
+E : 2000_64QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B42M00B
+E : 2000_128QAM_2_MHz : SPAN=12000;RBW=30;VBW=100 : B42M00B
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B23M50B
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B33M50B
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B43M50B
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B43M50B
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B43M50B
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : B43M50B
+#
+E : 4000_4QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B24M00B
+E : 4000_8QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B34M00B
+E : 4000_16QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B44M00B
+E : 4000_32QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B44M00B
+E : 4000_64QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B44M00B
+E : 4000_128QAM_4_MHz : SPAN=24000;RBW=30;VBW=100 : B44M00B
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B27M00B
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B37M00B
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B47M00B
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B47M00B
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B47M00B
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : B47M00B
+#
+E : 8000_4QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B28M00B
+E : 8000_8QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B38M00B
+E : 8000_16QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B48M00B
+E : 8000_32QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B48M00B
+E : 8000_64QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B48M00B
+E : 8000_128QAM_8_MHz : SPAN=44000;RBW=30;VBW=100 : B48M00B
+#
+#
+#RF=3000000-10000000 kHz
+#
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U21M75B0
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U31M75B0
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+#
+F : 2000_4QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_8QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_16QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_32QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_64QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_128QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+#
+F : 2500_4QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_8QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_16QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_32QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_64QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_128QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U23M50B0
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U33M50B0
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_256QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_512QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_1024QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_2048QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_4096QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+#
+F : 5000_4QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_8QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_16QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_32QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_64QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_128QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_256QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_512QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_1024QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_2048QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_4096QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U27M00B0
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U37M00B0
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U47M00B2
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U57M00B2
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U67M00B2
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U77M00B2
+E : 7000_256QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_512QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_1024QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_2048QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_4096QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+#
+F : 10000_4QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_8QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_16QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_32QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_64QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_128QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_256QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_512QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_1024QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_2048QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_4096QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+#
+F : 12000_4QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_8QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_16QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_32QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_64QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_128QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_256QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_512QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_1024QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+#
+E : 14000_4QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U214M0B0
+E : 14000_8QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U314M0B0
+E : 14000_16QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U414M0B2
+E : 14000_32QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U514M0B2
+E : 14000_64QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U614M0B2
+E : 14000_128QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U714M0B2
+E : 14000_256QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U814M0B2
+E : 14000_512QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U914M0B2
+E : 14000_1024QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UA14M0B2
+E : 14000_2048QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+E : 14000_4096QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+#
+E : 20000_4QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S220M0B0
+E : 20000_8QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S320M0B0
+E : 20000_16QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S420M0B2
+E : 20000_32QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S520M0B2
+E : 20000_64QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S620M0B2
+E : 20000_128QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S720M0B2
+E : 20000_256QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S820M0B2
+E : 20000_512QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S920M0B2
+E : 20000_1024QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SA20M0B2
+E : 20000_2048QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B2
+E : 20000_4096QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B2
+F : 20000_4QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_8QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_16QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_32QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_64QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_128QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_256QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_512QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_1024QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_2048QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_4096QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+#
+F : 25000_4QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_8QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_16QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_32QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_64QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_128QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_256QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_512QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_1024QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_2048QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_4096QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+#
+E : 28000_4QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U228M0B0
+E : 28000_8QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U328M0B0
+E : 28000_16QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U428M0B2
+E : 28000_32QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U528M0B2
+E : 28000_64QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U628M0B2
+E : 28000_128QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U728M0B2
+E : 28000_256QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U828M0B2
+E : 28000_512QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U928M0B2
+E : 28000_1024QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UA28M0B2
+E : 28000_2048QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+E : 28000_4096QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+#
+F : 30000_4QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_8QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_16QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_32QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_64QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_128QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_256QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_512QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_1024QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_2048QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_4096QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+#
+E : 40000_4QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U240M0B0
+E : 40000_8QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U340M0B0
+E : 40000_16QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U440M0B2
+E : 40000_32QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U540M0B2
+E : 40000_64QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U640M0B2
+E : 40000_128QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U740M0B2
+E : 40000_256QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U840M0B2
+E : 40000_512QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U940M0B2
+E : 40000_1024QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UA40M0B2
+E : 40000_2048QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B2
+E : 40000_4096QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B2
+F : 40000_4QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_8QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_16QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_32QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_64QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_128QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_256QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_512QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_1024QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_2048QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_4096QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+#
+F : 50000_4QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_8QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_16QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_32QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_64QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_128QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_256QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_512QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_1024QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_2048QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_4096QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+#
+E : 56000_4QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 56000_8QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 56000_16QAM_56s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 56000_32QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 56000_64QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 56000_128QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 56000_256QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 56000_512QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 56000_1024QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 56000_2048QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 56000_4096QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+#
+E : 60000_4QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 60000_8QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 60000_16QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 60000_32QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 60000_64QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 60000_128QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 60000_256QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 60000_512QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 60000_1024QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 60000_2048QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 60000_4096QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+F : 60000_4QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_8QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_16QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_32QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_64QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_128QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_256QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_512QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_1024QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_2048QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_4096QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+#
+F : 75000_4QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_8QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_16QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_32QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_64QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_128QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_256QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_512QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_1024QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_2048QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_4096QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+#
+F : 80000_4QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_8QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_16QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_32QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_64QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_128QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_256QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_512QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_1024QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_2048QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_4096QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+#
+F : 100000_4QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_8QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_16QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_32QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_64QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_128QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_256QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_512QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_1024QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_2048QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_4096QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+#
+E : 112000_4QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U2112MB0
+E : 112000_8QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U3112MB0
+E : 112000_16QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S4112MB2
+E : 112000_32QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S5112MB2
+E : 112000_64QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S6112MB2
+E : 112000_128QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S7112MB2
+E : 112000_256QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S8112MB2
+E : 112000_512QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S9112MB2
+E : 112000_1024QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SA112MB2
+E : 112000_2048QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+E : 112000_4096QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+#
+#
+#RF=10000000-15000000 kHz
+#
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U21M75B0
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U31M75B0
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+#
+F : 2000_4QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_8QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_16QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_32QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_64QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+F : 2000_128QAM_2_MHz : SPAN=11000;RBW=5;VBW=50 : FCC_A02
+#
+F : 2500_4QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_8QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_16QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_32QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_64QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+F : 2500_128QAM_2p5_MHz : SPAN=12000;RBW=5;VBW=50 : FCC_A2P5
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U23M50B0
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U33M50B0
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_256QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_512QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_1024QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_2048QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_4096QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+#
+F : 5000_4QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_8QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_16QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_32QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_64QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_128QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_256QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_512QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_1024QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_2048QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+F : 5000_4096QAM_5_MHz : SPAN=28000;RBW=5;VBW=50 : FCC_A05
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U27M00B0
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U37M00B0
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U47M00B2
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U57M00B2
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U67M00B2
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U77M00B2
+E : 7000_256QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_512QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_1024QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_2048QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_4096QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+#
+F : 10000_4QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_8QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_16QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_32QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_64QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_128QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_256QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_512QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_1024QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_2048QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+F : 10000_4096QAM_10_MHz : SPAN=55000;RBW=5;VBW=50 : FCC_A10
+#
+F : 12000_4QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_8QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_16QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_32QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_64QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_128QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_256QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_512QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+F : 12000_1024QAM_12_MHz : SPAN=66000;RBW=5;VBW=50 : FCC_A12
+#
+E : 14000_4QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U214M0B0
+E : 14000_8QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U314M0B0
+E : 14000_16QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U414M0B2
+E : 14000_32QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U514M0B2
+E : 14000_64QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U614M0B2
+E : 14000_128QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U714M0B2
+E : 14000_256QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U814M0B2
+E : 14000_512QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U914M0B2
+E : 14000_1024QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UA14M0B2
+E : 14000_2048QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+E : 14000_4096QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+#
+E : 20000_4QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S220M0B0
+E : 20000_8QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S320M0B0
+E : 20000_16QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S420M0B5
+E : 20000_32QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S520M0B5
+E : 20000_64QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S620M0B5
+E : 20000_128QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S720M0B5
+E : 20000_256QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S820M0B5
+E : 20000_512QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S920M0B5
+E : 20000_1024QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SA20M0B5
+E : 20000_2048QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+E : 20000_4096QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+F : 20000_4QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_8QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_16QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_32QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_64QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_128QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_256QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_512QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_1024QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_2048QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+F : 20000_4096QAM_20_MHz : SPAN=110000;RBW=5;VBW=50 : FCC_A20
+#
+F : 25000_4QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_8QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_16QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_32QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_64QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_128QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_256QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_512QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_1024QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_2048QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+F : 25000_4096QAM_25_MHz : SPAN=140000;RBW=5;VBW=50 : FCC_A25
+#
+E : 28000_4QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U228M0B0
+E : 28000_8QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U328M0B0
+E : 28000_16QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U428M0B2
+E : 28000_32QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U528M0B2
+E : 28000_64QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U628M0B2
+E : 28000_128QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U728M0B2
+E : 28000_256QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U828M0B2
+E : 28000_512QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U928M0B2
+E : 28000_1024QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UA28M0B2
+E : 28000_2048QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+E : 28000_4096QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+#
+F : 30000_4QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_8QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_16QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_32QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_64QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_128QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_256QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_512QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_1024QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_2048QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+F : 30000_4096QAM_30_MHz : SPAN=170000;RBW=5;VBW=50 : FCC_A30
+#
+E : 40000_4QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U240M0B0
+E : 40000_8QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U340M0B0
+E : 40000_16QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U440M0B5
+E : 40000_32QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U540M0B5
+E : 40000_64QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U640M0B5
+E : 40000_128QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U740M0B5
+E : 40000_256QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U840M0B5
+E : 40000_512QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U940M0B5
+E : 40000_1024QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UA40M0B5
+E : 40000_2048QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+E : 40000_4096QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+F : 40000_4QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_8QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_16QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_32QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_64QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_128QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_256QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_512QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_1024QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_2048QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+F : 40000_4096QAM_40_MHz : SPAN=240000;RBW=5;VBW=50 : FCC_A40
+#
+F : 50000_4QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_8QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_16QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_32QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_64QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_128QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_256QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_512QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_1024QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_2048QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+F : 50000_4096QAM_50_MHz : SPAN=280000;RBW=5;VBW=50 : FCC_A50
+#
+E : 56000_4QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 56000_8QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 56000_16QAM_56s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 56000_32QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 56000_64QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 56000_128QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 56000_256QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 56000_512QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 56000_1024QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 56000_2048QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 56000_4096QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+#
+E : 60000_4QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 60000_8QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 60000_16QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 60000_32QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 60000_64QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 60000_128QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 60000_256QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 60000_512QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 60000_1024QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 60000_2048QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 60000_4096QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+F : 60000_4QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_8QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_16QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_32QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_64QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_128QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_256QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_512QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_1024QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_2048QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+F : 60000_4096QAM_60_MHz : SPAN=320000;RBW=5;VBW=50 : FCC_A60
+#
+F : 75000_4QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_8QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_16QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_32QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_64QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_128QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_256QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_512QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_1024QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_2048QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+F : 75000_4096QAM_75_MHz : SPAN=410000;RBW=5;VBW=50 : FCC_A75
+#
+F : 80000_4QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_8QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_16QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_32QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_64QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_128QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_256QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_512QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_1024QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_2048QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+F : 80000_4096QAM_80_MHz : SPAN=440000;RBW=5;VBW=50 : FCC_A80
+#
+F : 100000_4QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_8QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_16QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_32QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_64QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_128QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_256QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_512QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_1024QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_2048QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+F : 100000_4096QAM_100_MHz : SPAN=520000;RBW=5;VBW=50 : FCC_A100
+#
+E : 112000_4QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U2112MB0
+E : 112000_8QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U3112MB0
+E : 112000_16QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S4112MB2
+E : 112000_32QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S5112MB2
+E : 112000_64QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S6112MB2
+E : 112000_128QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S7112MB2
+E : 112000_256QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S8112MB2
+E : 112000_512QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S9112MB2
+E : 112000_1024QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SA112MB2
+E : 112000_2048QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+E : 112000_4096QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+#
+#RF=15000000-17000000 kHz
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U21M75B0
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U31M75B0
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B2
+#
+F : 2000_4QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_8QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_16QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_32QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_64QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_128QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+#
+F : 2500_4QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_8QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_16QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_32QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_64QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_128QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U23M50B0
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U33M50B0
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_256QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_512QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_1024QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_2048QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+E : 3500_4096QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B2
+#
+F : 5000_4QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_8QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_16QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_32QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_64QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_128QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_256QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_512QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_1024QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_2048QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_4096QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U27M00B0
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U37M00B0
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U47M00B2
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U57M00B2
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U67M00B2
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U77M00B2
+E : 7000_256QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_512QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_1024QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_2048QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+E : 7000_4096QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B2
+#
+F : 10000_4QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_8QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_16QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_32QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_64QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_128QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_256QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_512QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_1024QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_2048QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_4096QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+#
+F : 12000_4QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_8QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_16QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_32QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_64QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_128QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_256QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_512QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_1024QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+#
+E : 14000_4QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U214M0B0
+E : 14000_8QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U314M0B0
+E : 14000_16QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U414M0B2
+E : 14000_32QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U514M0B2
+E : 14000_64QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U614M0B2
+E : 14000_128QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U714M0B2
+E : 14000_256QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U814M0B2
+E : 14000_512QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U914M0B2
+E : 14000_1024QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UA14M0B2
+E : 14000_2048QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+E : 14000_4096QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B2
+#
+E : 20000_4QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S220M0B0
+E : 20000_8QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S320M0B0
+E : 20000_16QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S420M0B5
+E : 20000_32QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S520M0B5
+E : 20000_64QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S620M0B5
+E : 20000_128QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S720M0B5
+E : 20000_256QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S820M0B5
+E : 20000_512QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S920M0B5
+E : 20000_1024QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SA20M0B5
+E : 20000_2048QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+E : 20000_4096QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+F : 20000_4QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_8QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_16QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_32QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_64QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_128QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_256QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_512QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_1024QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_2048QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_4096QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+#
+F : 25000_4QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_8QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_16QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_32QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_64QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_128QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_256QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_512QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_1024QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_2048QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_4096QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+#
+E : 28000_4QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U228M0B0
+E : 28000_8QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U328M0B0
+E : 28000_16QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U428M0B2
+E : 28000_32QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U528M0B2
+E : 28000_64QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U628M0B2
+E : 28000_128QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U728M0B2
+E : 28000_256QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U828M0B2
+E : 28000_512QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U928M0B2
+E : 28000_1024QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UA28M0B2
+E : 28000_2048QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+E : 28000_4096QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B2
+#
+F : 30000_4QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_8QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_16QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_32QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_64QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_128QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_256QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_512QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_1024QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_2048QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_4096QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+#
+E : 40000_4QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U240M0B0
+E : 40000_8QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U340M0B0
+E : 40000_16QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U440M0B5
+E : 40000_32QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U540M0B5
+E : 40000_64QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U640M0B5
+E : 40000_128QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U740M0B5
+E : 40000_256QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U840M0B5
+E : 40000_512QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U940M0B5
+E : 40000_1024QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UA40M0B5
+E : 40000_2048QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+E : 40000_4096QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+F : 40000_4QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_8QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_16QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_32QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_64QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_128QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_256QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_512QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_1024QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_2048QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_4096QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+#
+F : 50000_4QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_8QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_16QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_32QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_64QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_128QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_256QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_512QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_1024QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_2048QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_4096QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+#
+E : 56000_4QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 56000_8QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 56000_16QAM_56s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 56000_32QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 56000_64QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 56000_128QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 56000_256QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 56000_512QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 56000_1024QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 56000_2048QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 56000_4096QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+#
+E : 60000_4QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 60000_8QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 60000_16QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B2
+E : 60000_32QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B2
+E : 60000_64QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B2
+E : 60000_128QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B2
+E : 60000_256QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B2
+E : 60000_512QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B2
+E : 60000_1024QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B2
+E : 60000_2048QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+E : 60000_4096QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B2
+F : 60000_4QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_8QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_16QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_32QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_64QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_128QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_256QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_512QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_1024QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_2048QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_4096QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+#
+F : 75000_4QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_8QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_16QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_32QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_64QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_128QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_256QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_512QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_1024QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_2048QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_4096QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+#
+F : 80000_4QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_8QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_16QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_32QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_64QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_128QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_256QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_512QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_1024QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_2048QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_4096QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+#
+F : 100000_4QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_8QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_16QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_32QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_64QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_128QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_256QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_512QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_1024QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_2048QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_4096QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+#
+E : 112000_4QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U2112MB0
+E : 112000_8QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U3112MB0
+E : 112000_16QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S4112MB2
+E : 112000_32QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S5112MB2
+E : 112000_64QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S6112MB2
+E : 112000_128QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S7112MB2
+E : 112000_256QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S8112MB2
+E : 112000_512QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : S9112MB2
+E : 112000_1024QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SA112MB2
+E : 112000_2048QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+E : 112000_4096QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : SB112MB2
+#
+#
+#RF=17000000-30000000 kHz
+#
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U21M75B0
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U31M75B0
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B3
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B3
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B3
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B3
+#
+F : 2000_4QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_8QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_16QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_32QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_64QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_128QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+#
+F : 2500_4QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_8QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_16QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_32QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_64QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_128QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U23M50B0
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U33M50B0
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_256QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_512QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_1024QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_2048QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+E : 3500_4096QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B3
+#
+F : 5000_4QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_8QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_16QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_32QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_64QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_128QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_256QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_512QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_1024QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_2048QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_4096QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U27M00B0
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U37M00B0
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U47M00B3
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U57M00B3
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U67M00B3
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U77M00B3
+E : 7000_256QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B3
+E : 7000_512QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B3
+E : 7000_1024QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B3
+E : 7000_2048QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B3
+E : 7000_4096QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B3
+#
+F : 10000_4QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_8QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_16QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_32QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_64QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_128QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_256QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_512QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_1024QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_2048QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_4096QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+#
+F : 12000_4QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_8QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_16QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_32QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_64QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_128QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_256QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_512QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_1024QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+#
+E : 14000_4QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U214M0B0
+E : 14000_8QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U314M0B0
+E : 14000_16QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U414M0B3
+E : 14000_32QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U514M0B3
+E : 14000_64QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U614M0B3
+E : 14000_128QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U714M0B3
+E : 14000_256QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U814M0B3
+E : 14000_512QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U914M0B3
+E : 14000_1024QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UA14M0B3
+E : 14000_2048QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B3
+E : 14000_4096QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B3
+#
+E : 20000_4QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S220M0B0
+E : 20000_8QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S320M0B0
+E : 20000_16QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S420M0B5
+E : 20000_32QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S520M0B5
+E : 20000_64QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S620M0B5
+E : 20000_128QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S720M0B5
+E : 20000_256QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S820M0B5
+E : 20000_512QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S920M0B5
+E : 20000_1024QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SA20M0B5
+E : 20000_2048QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+E : 20000_4096QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+F : 20000_4QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_8QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_16QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_32QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_64QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_128QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_256QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_512QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_1024QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_2048QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_4096QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+#
+F : 25000_4QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_8QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_16QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_32QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_64QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_128QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_256QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_512QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_1024QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_2048QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_4096QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+#
+E : 28000_4QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U228M0B0
+E : 28000_8QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U328M0B0
+E : 28000_16QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U428M0B3
+E : 28000_32QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U528M0B3
+E : 28000_64QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U628M0B3
+E : 28000_128QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U728M0B3
+E : 28000_256QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U828M0B3
+E : 28000_512QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U928M0B3
+E : 28000_1024QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UA28M0B3
+E : 28000_2048QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B3
+E : 28000_4096QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B3
+#
+F : 30000_4QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_8QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_16QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_32QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_64QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_128QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_256QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_512QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_1024QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_2048QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_4096QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+#
+E : 40000_4QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U240M0B0
+E : 40000_8QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U340M0B0
+E : 40000_16QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U440M0B5
+E : 40000_32QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U540M0B5
+E : 40000_64QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U640M0B5
+E : 40000_128QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U740M0B5
+E : 40000_256QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U840M0B5
+E : 40000_512QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U940M0B5
+E : 40000_1024QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UA40M0B5
+E : 40000_2048QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+E : 40000_4096QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+F : 40000_4QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_8QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_16QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_32QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_64QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_128QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_256QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_512QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_1024QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_2048QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_4096QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+#
+F : 50000_4QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_8QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_16QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_32QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_64QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_128QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_256QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_512QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_1024QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_2048QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_4096QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+#
+E : 56000_4QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 56000_8QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 56000_16QAM_56s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B3
+E : 56000_32QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B3
+E : 56000_64QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B3
+E : 56000_128QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B3
+E : 56000_256QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B3
+E : 56000_512QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B3
+E : 56000_1024QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B3
+E : 56000_2048QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B3
+E : 56000_4096QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B3
+#
+E : 60000_4QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 60000_8QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 60000_16QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B3
+E : 60000_32QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B3
+E : 60000_64QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B3
+E : 60000_128QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B3
+E : 60000_256QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B3
+E : 60000_512QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B3
+E : 60000_1024QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B3
+E : 60000_2048QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B3
+E : 60000_4096QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B3
+F : 60000_4QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_8QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_16QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_32QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_64QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_128QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_256QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_512QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_1024QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_2048QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_4096QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+#
+F : 75000_4QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_8QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_16QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_32QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_64QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_128QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_256QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_512QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_1024QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_2048QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_4096QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+#
+F : 80000_4QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_8QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_16QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_32QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_64QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_128QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_256QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_512QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_1024QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_2048QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_4096QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+#
+F : 100000_4QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_8QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_16QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_32QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_64QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_128QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_256QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_512QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_1024QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_2048QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_4096QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+#
+E : 112000_4QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U2112MB0
+E : 112000_8QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U3112MB0
+E : 112000_16QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U4112MB3
+E : 112000_32QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U5112MB3
+E : 112000_64QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U6112MA3
+E : 112000_128QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U7112MA3
+E : 112000_256QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U8112MA3
+E : 112000_512QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U9112MA3
+E : 112000_1024QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UA112MA3
+E : 112000_2048QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UB112MA3
+E : 112000_4096QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UB112MA3
+#
+#
+#RF=30000000-55000000 kHz
+#
+E : 1750_4QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U21M75B0
+E : 1750_8QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U31M75B0
+E : 1750_16QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B4
+E : 1750_32QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B4
+E : 1750_64QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B4
+E : 1750_128QAM_1p75_MHz : SPAN=9000;RBW=30;VBW=100 : U41M75B4
+#
+F : 2000_4QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_8QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_16QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_32QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_64QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+F : 2000_128QAM_2_MHz : SPAN=11000;RBW=1000;VBW=30000 : FCC_B02
+#
+F : 2500_4QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_8QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_16QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_32QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_64QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+F : 2500_128QAM_2p5_MHz : SPAN=12000;RBW=1000;VBW=30000 : FCC_B2P5
+#
+E : 3500_4QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U23M50B0
+E : 3500_8QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U33M50B0
+E : 3500_16QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_32QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_64QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_128QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_256QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_512QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_1024QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_2048QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+E : 3500_4096QAM_3p5_MHz : SPAN=20000;RBW=30;VBW=100 : U43M50B4
+#
+F : 5000_4QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_8QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_16QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_32QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_64QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_128QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_256QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_512QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_1024QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_2048QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+F : 5000_4096QAM_5_MHz : SPAN=28000;RBW=1000;VBW=30000 : FCC_B05
+#
+E : 7000_4QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U27M00B0
+E : 7000_8QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U37M00B0
+E : 7000_16QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U47M00B4
+E : 7000_32QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U57M00B4
+E : 7000_64QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U67M00B4
+E : 7000_128QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U77M00B4
+E : 7000_256QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B4
+E : 7000_512QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B4
+E : 7000_1024QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B4
+E : 7000_2048QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B4
+E : 7000_4096QAM_7_MHz : SPAN=40000;RBW=30;VBW=100 : U87M00B4
+#
+F : 10000_4QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_8QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_16QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_32QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_64QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_128QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_256QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_512QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_1024QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_2048QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+F : 10000_4096QAM_10_MHz : SPAN=55000;RBW=1000;VBW=30000 : FCC_B10
+#
+F : 12000_4QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_8QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_16QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_32QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_64QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_128QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_256QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_512QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+F : 12000_1024QAM_12_MHz : SPAN=66000;RBW=1000;VBW=30000 : FCC_B12
+#
+E : 14000_4QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U214M0B0
+E : 14000_8QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U314M0B0
+E : 14000_16QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U414M0B4
+E : 14000_32QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U514M0B4
+E : 14000_64QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U614M0B4
+E : 14000_128QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U714M0B4
+E : 14000_256QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U814M0B4
+E : 14000_512QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : U914M0B4
+E : 14000_1024QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UA14M0B4
+E : 14000_2048QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B4
+E : 14000_4096QAM_14_MHz : SPAN=80000;RBW=100;VBW=300 : UB14M0B4
+#
+E : 20000_4QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S220M0B0
+E : 20000_8QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S320M0B0
+E : 20000_16QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S420M0B5
+E : 20000_32QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S520M0B5
+E : 20000_64QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S620M0B5
+E : 20000_128QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S720M0B5
+E : 20000_256QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S820M0B5
+E : 20000_512QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : S920M0B5
+E : 20000_1024QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SA20M0B5
+E : 20000_2048QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+E : 20000_4096QAM_20s_MHz : SPAN=110000;RBW=100;VBW=300 : SB20M0B5
+F : 20000_4QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_8QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_16QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_32QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_64QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_128QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_256QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_512QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_1024QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_2048QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+F : 20000_4096QAM_20_MHz : SPAN=110000;RBW=1000;VBW=30000 : FCC_B20
+#
+F : 25000_4QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_8QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_16QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_32QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_64QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_128QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_256QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_512QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_1024QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_2048QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+F : 25000_4096QAM_25_MHz : SPAN=140000;RBW=1000;VBW=30000 : FCC_B25
+#
+E : 28000_4QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U228M0B0
+E : 28000_8QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U328M0B0
+E : 28000_16QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U428M0B4
+E : 28000_32QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U528M0B4
+E : 28000_64QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U628M0B4
+E : 28000_128QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U728M0B4
+E : 28000_256QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U828M0B4
+E : 28000_512QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : U928M0B4
+E : 28000_1024QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UA28M0B4
+E : 28000_2048QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B4
+E : 28000_4096QAM_28_MHz : SPAN=160000;RBW=100;VBW=300 : UB28M0B4
+#
+F : 30000_4QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_8QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_16QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_32QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_64QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_128QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_256QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_512QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_1024QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_2048QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+F : 30000_4096QAM_30_MHz : SPAN=170000;RBW=1000;VBW=30000 : FCC_B30
+#
+E : 40000_4QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U240M0B0
+E : 40000_8QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U340M0B0
+E : 40000_16QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U440M0B5
+E : 40000_32QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U540M0B5
+E : 40000_64QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U640M0B5
+E : 40000_128QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U740M0B5
+E : 40000_256QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U840M0B5
+E : 40000_512QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : U940M0B5
+E : 40000_1024QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UA40M0B5
+E : 40000_2048QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+E : 40000_4096QAM_40s_MHz : SPAN=240000;RBW=300;VBW=300 : UB40M0B5
+F : 40000_4QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_8QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_16QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_32QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_64QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_128QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_256QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_512QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_1024QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_2048QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+F : 40000_4096QAM_40_MHz : SPAN=240000;RBW=1000;VBW=30000 : FCC_B40
+#
+F : 50000_4QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_8QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_16QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_32QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_64QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_128QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_256QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_512QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_1024QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_2048QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+F : 50000_4096QAM_50_MHz : SPAN=280000;RBW=1000;VBW=30000 : FCC_B50
+#
+E : 56000_4QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 56000_8QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 56000_16QAM_56s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B4
+E : 56000_32QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B4
+E : 56000_64QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B4
+E : 56000_128QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B4
+E : 56000_256QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B4
+E : 56000_512QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B4
+E : 56000_1024QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B4
+E : 56000_2048QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B4
+E : 56000_4096QAM_56_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B4
+#
+E : 60000_4QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U256M0B0
+E : 60000_8QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U356M0B0
+E : 60000_16QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U456M0B4
+E : 60000_32QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U556M0B4
+E : 60000_64QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U656M0B4
+E : 60000_128QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U756M0B4
+E : 60000_256QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U856M0B4
+E : 60000_512QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : U956M0B4
+E : 60000_1024QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UA56M0B4
+E : 60000_2048QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B4
+E : 60000_4096QAM_60s_MHz : SPAN=320000;RBW=300;VBW=300 : UB56M0B4
+F : 60000_4QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_8QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_16QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_32QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_64QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_128QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_256QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_512QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_1024QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_2048QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+F : 60000_4096QAM_60_MHz : SPAN=320000;RBW=1000;VBW=30000 : FCC_B60
+#
+F : 75000_4QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_8QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_16QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_32QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_64QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_128QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_256QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_512QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_1024QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_2048QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+F : 75000_4096QAM_75_MHz : SPAN=410000;RBW=1000;VBW=30000 : FCC_B75
+#
+F : 80000_4QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_8QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_16QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_32QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_64QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_128QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_256QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_512QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_1024QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_2048QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+F : 80000_4096QAM_80_MHz : SPAN=440000;RBW=1000;VBW=30000 : FCC_B80
+#
+F : 100000_4QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_8QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_16QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_32QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_64QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_128QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_256QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_512QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_1024QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_2048QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+F : 100000_4096QAM_100_MHz : SPAN=520000;RBW=1000;VBW=30000 : FCC_B100
+#
+E : 112000_4QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U2112MB0
+E : 112000_8QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U3112MB0
+E : 112000_16QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U4112MB4
+E : 112000_32QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U5112MB4
+E : 112000_64QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U6112MA4
+E : 112000_128QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U7112MA4
+E : 112000_256QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U8112MA4
+E : 112000_512QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : U9112MA4
+E : 112000_1024QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UA112MA4
+E : 112000_2048QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UB112MA4
+E : 112000_4096QAM_112_MHz : SPAN=600000;RBW=300;VBW=300 : UB112MA4`;
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  populateBWDropdown();
+  // Initialize with embedded maskCfg.txt
+  if (maskText && maskText.trim().length) {
+    const bytes = new Blob([maskText]).size;
+    document.querySelector("#filePreview").value = maskText;
+    document.querySelector("#fileStatus").textContent = `Built‑in: maskCfg.txt (${bytes.toLocaleString()} bytes)`;
+  }
+
+
+  // Info modal wiring
+  const open = $("#infoBtn"), close = $("#infoClose"), modal=$("#infoModal"), back=$("#infoBackdrop");
+  function show(){ modal.style.display="flex"; back.style.display="block"; modal.setAttribute("aria-hidden","false"); }
+  function hide(){ modal.style.display="none"; back.style.display="none"; modal.setAttribute("aria-hidden","true"); }
+  open?.addEventListener("click", show);
+  close?.addEventListener("click", hide);
+  back?.addEventListener("click", hide);
+  modal?.addEventListener("click", (e)=>{ if(e.target === modal) hide(); }); // click outside sheet closes
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") hide(); });
+});
+
+$("#file").addEventListener("change", (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  if (f.name !== "maskCfg.txt") { alert("Filename must be exactly \"maskCfg.txt\"."); return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    maskText = String(reader.result);
+    $("#filePreview").value = maskText;
+    $("#fileStatus").textContent = `Loaded: ${f.name} (${f.size.toLocaleString()} bytes)`;
+  };
+  reader.readAsText(f);
+});
+
+// drag & drop
+const drop = $("#drop");
+;["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault(); drop.style.outline="2px dashed var(--accent)"}));
+;["dragleave","drop"].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault(); drop.style.outline="none"}));
+drop.addEventListener("drop", (e)=>{
+  const f = e.dataTransfer.files?.[0]; if(!f) return;
+  if (f.name !== "maskCfg.txt") { alert("Filename must be exactly \"maskCfg.txt\"."); return; }
+  if(!/\.txt$|\.md$|\.text$/i.test(f.name)){ alert("Please drop a .txt or .md file."); return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    maskText = String(reader.result);
+    $("#filePreview").value = maskText;
+    $("#fileStatus").textContent = `Loaded: ${f.name} (${f.size.toLocaleString()} bytes)`;
+  };
+  reader.readAsText(f);
+});
+
+$("#reset").addEventListener("click", ()=>{
+  $("#cf").value = ""; $("#bw").selectedIndex = 0; $("#mod").selectedIndex = 0;
+  document.querySelector('input[name="std"][value="ETSI"]').checked = true;
+  $("#fallback").checked = false;
+  ["calcSpan","calcRBW","calcVBW","maskSpan","maskRBW","maskVBW"].forEach(id=>$("#"+id).textContent="—");
+  $("#maskName").textContent = "—"; $("#calcExplainer").textContent = ""; setDiag("");
+});
+
+/* ----------- Calculation button ----------- */
+$("#calc").addEventListener("click", ()=>{
+  setDiag("");
+  const cf_mhz = parseFloat($("#cf").value);
+  const bwSel = $("#bw").value ? JSON.parse($("#bw").value) : null;
+  const mod = $("#mod").value.trim();
+  const stdRadio = document.querySelector('input[name="std"]:checked');
+  let std = stdRadio ? stdRadio.value : "ETSI";
+
+  if(!isFinite(cf_mhz)){ alert("Enter valid Center Frequency (MHz)."); return; }
+  if(!bwSel){ alert("Choose a Channel bandwidth (MHz)."); return; }
+  const bw_mhz = +bwSel.bw;
+  // Keep standard in sync with the BW selection (user may override afterwards)
+  if (std !== bwSel.std){
+    std = bwSel.std;
+    const r = document.querySelector(`input[name="std"][value="${std}"]`);
+    if (r) r.checked = true;
+  }
+  const useFallback = $("#fallback").checked;
+
+  // ---- Calculated (rules) with step-by-step explainer ----
+  let calcSpanMHz, calcRBWkHz, calcVBWhz, expl=[];
+  if (std==="ETSI"){
+    // SPAN rule
+    const spanRule = (bw_mhz < 500) ? "SPAN = 5 × B" : "SPAN = 3 × B + 1000 MHz";
+    calcSpanMHz = calcSpan_ETSI(bw_mhz);
+
+    // RBW ≈ 1% of B, snapped
+    const targetRBW_kHz = Math.max(1, 0.01 * bw_mhz * 1000);
+    calcRBWkHz = etsi_RBWkHz_from_B(bw_mhz);
+
+    // VBW ≈ 0.3% of RBW (≥100 Hz)
+    calcVBWhz = etsi_VBWhz_from_RBWkHz(calcRBWkHz);
+
+    expl = [
+      `Inputs: B = ${f3(bw_mhz)} MHz, f_c = ${f3(cf_mhz)} MHz, Standard = ETSI`,
+      `1) ${spanRule} → SPAN = ${ (bw_mhz<500) ? `5 × ${f3(bw_mhz)} = ${f3(calcSpanMHz)} MHz` : `3 × ${f3(bw_mhz)} + 1000 = ${f3(calcSpanMHz)} MHz` }`,
+      `2) RBW target ≈ 1% of B = 0.01 × ${f3(bw_mhz)} MHz = ${f3(0.01*bw_mhz)} MHz = ${f3(targetRBW_kHz)} kHz`,
+      `   Snap to standard steps {1,3,10,30,100,300,1000,2000,5000} kHz → RBW = ${f0(calcRBWkHz)} kHz`,
+      `3) VBW ≈ 0.3% of RBW (≥100 Hz) → 0.003 × ${f0(calcRBWkHz)} kHz = ${f0(Math.round(calcRBWkHz*1000*0.003))} Hz → VBW = ${f0(calcVBWhz)} Hz`,
+      `Notes: For conformance, ETSI Table 7 gives the exact RBW/VBW rows per CS; use maskCfg values when available.`
+    ];
+  } else {
+    // FCC practice: SPAN ≈ 5×B; RBW by center frequency; VBW = RBW
+    calcSpanMHz = calcFCC_Span(bw_mhz);
+    calcRBWkHz  = calcFCC_RBW_kHz(cf_mhz);
+    calcVBWhz   = calcFCC_VBW_Hz(calcRBWkHz);
+
+    expl = [
+      `Inputs: B = ${f3(bw_mhz)} MHz, f_c = ${f3(cf_mhz)} MHz, Standard = FCC`,
+      `1) SPAN (practice) = 5 × B = 5 × ${f3(bw_mhz)} = ${f3(calcSpanMHz)} MHz`,
+      `2) RBW by center frequency: f_c ${cf_mhz<=1000? "≤":">"} 1 GHz → RBW = ${f0(calcRBWkHz)} kHz`,
+      `3) VBW = RBW (peak compliance) → VBW = ${f0(calcRBWkHz)} kHz = ${f0(calcVBWhz)} Hz`,
+      `Notes: §101.111 prescribes reference bandwidths (4 kHz <15 GHz; 1 MHz ≥15 GHz) for evaluating mask attenuation; span not mandated.`
+    ];
+  }
+
+  $("#calcSpan").textContent = fmt.mhz(calcSpanMHz);
+  $("#calcRBW").textContent  = fmt.khz(calcRBWkHz);
+  $("#calcVBW").textContent  = fmt.hz(calcVBWhz);
+  $("#calcExplainer").textContent = expl.join("\n");
+
+  // ---- Mask lookup (authoritative per file, if present) ----
+  let found = null, note = "";
+  if (maskText){
+    const cf_khz = Math.round(cf_mhz * 1000); // MHz -> kHz
+    const bw_khz = Math.round(bw_mhz * 1000); // MHz -> kHz
+    const sec = rfSectionForCF_kHz(cf_khz);
+    if (!sec){
+      setDiag(`No RF section covers CF=${cf_khz} kHz. Check your center frequency.`);
+    } else {
+      const secText = parseMaskSection(maskText, sec.t);
+      const res = findMaskEntry(secText, std, bw_khz, mod, useFallback);
+      found = res.match; note = res.note;
+      if (!found){
+        setDiag(`No exact mask found in section "${sec.t}". Tried: EF=${std==='ETSI'?'E':'F'}, BW=${bw_khz} kHz, MOD=${mod}.`);
+      } else {
+        setDiag(note || `Matched in section "${sec.t}": ${found.line}`);
+      }
+    }
+  } else {
+    setDiag("Upload maskCfg file here to enable mask lookup.");
+  }
+
+  if (found){
+    $("#maskSpan").textContent = fmt.mhz(found.span/1000); // kHz → MHz for display
+    $("#maskRBW").textContent  = fmt.khz(found.rbw);
+    $("#maskVBW").textContent  = fmt.hz(found.vbw);
+    $("#maskName").textContent = found.name;
+  } else {
+    $("#maskSpan").textContent = "—";
+    $("#maskRBW").textContent  = "—";
+    $("#maskVBW").textContent  = "—";
+    $("#maskName").textContent = maskText? "No match" : "Load mask file";
+  }
+});
+</script>
+</body>
+</html>
